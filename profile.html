@@ -3,87 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Carga - SONAR</title>
+    <title>Mi Perfil - SONAR</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 </head>
 <body>
-    <div class="profile-container">
-        <header class="profile-header">
-            <div>
-                <a href="index.html" class="back-link"><i class="fas fa-arrow-left"></i> Volver a SONAR</a>
-                <h1>Panel de Carga del Demo</h1>
+    <div class="app-layout">
+        
+        <!-- SIDEBAR (Igual que index) -->
+        <aside class="sidebar-left">
+            <div class="logo-container">
+                <h2>sonar.</h2>
             </div>
-            <button id="upload-music-btn" class="submit-btn"><i class="fas fa-plus"></i> Cargar Nuevo Lanzamiento</button>
-        </header>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="index.html"><i class="fas fa-home"></i> <span>Inicio</span></a></li>
+                    <li><a href="index.html"><i class="fas fa-compass"></i> <span>Explorar</span></a></li>
+                    <li class="active"><a href="#"><i class="fas fa-user"></i> <span>Mi Perfil</span></a></li>
+                </ul>
+            </nav>
+        </aside>
 
-        <main class="profile-content">
-            <h2>Lanzamientos Cargados en el Demo</h2>
-            <div id="releases-list" class="releases-list">
-                <!-- El JavaScript llenará esta sección -->
+        <!-- CONTENIDO PRINCIPAL: PERFIL -->
+        <main class="main-content">
+            
+            <!-- 1. HEADER DEL ARTISTA -->
+            <div class="profile-header">
+                <div class="banner-container">
+                    <img id="my-banner" src="https://via.placeholder.com/1200x400/333/333" alt="Banner">
+                    <button class="edit-banner-btn"><i class="fas fa-camera"></i> Cambiar Portada</button>
+                </div>
+                <div class="profile-info-bar">
+                    <div class="profile-avatar-container">
+                        <img id="my-avatar" src="https://via.placeholder.com/150" alt="Avatar">
+                    </div>
+                    <div class="profile-details">
+                        <p>ARTISTA</p>
+                        <h1 id="my-artist-name">Nombre Artista</h1>
+                        <p>0 Seguidores • <span id="track-count">0</span> Canciones</p>
+                    </div>
+                    <div class="action-bar">
+                        <button class="btn-secondary" id="edit-profile-btn">Editar Perfil</button>
+                        <button class="btn-primary" id="upload-btn">
+                            <i class="fas fa-cloud-upload-alt"></i> Subir Música
+                        </button>
+                    </div>
+                </div>
             </div>
+
+            <!-- 2. CONTENIDO (DISCOGRAFÍA) -->
+            <div style="padding: 0 20px;">
+                <h3 class="section-title">Mis Lanzamientos</h3>
+                <div id="my-releases-grid" class="song-grid">
+                    <!-- JS llenará esto -->
+                </div>
+            </div>
+
         </main>
+        
+        <!-- SIDEBAR DERECHA (Opcional, la dejamos vacía para enfocar en perfil) -->
+        <aside class="sidebar-right" style="background: var(--bg-base); border:none;"></aside>
     </div>
 
-    <!-- MODAL PARA SUBIR MÚSICA -->
+    <!-- REPRODUCTOR (Mudo visualmente, solo para consistencia) -->
+    <footer class="player-bar">
+        <div class="player-left">
+            <div class="player-info">
+                <h4>Reproductor en pausa</h4>
+            </div>
+        </div>
+    </footer>
+
+    <!-- MODAL DE SUBIDA (Oculto) -->
     <div id="upload-modal" class="modal-overlay">
         <div class="modal-content">
-            <button id="close-modal-btn" class="close-modal-btn">&times;</button>
-            <h2>Cargar Nuevo Lanzamiento</h2>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2>Nuevo Lanzamiento</h2>
+                <button id="close-modal" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">&times;</button>
+            </div>
+            
             <form id="upload-form">
-                
-                <p class="form-section-title">Información del Artista</p>
+                <!-- Paso 1: Info del Disco -->
                 <div class="form-group">
-                    <label for="artist-name">Nombre del Artista</label>
-                    <!-- CAMBIO: Se añade el atributo 'list' para conectar con el datalist -->
-                    <input type="text" id="artist-name" list="artist-suggestions" placeholder="Escribe un nombre nuevo o existente" required>
-                    <!-- CAMBIO: Datalist para las sugerencias -->
-                    <datalist id="artist-suggestions">
-                        <!-- Las opciones se llenarán con JavaScript -->
-                    </datalist>
-                </div>
-                
-                <!-- CAMBIO: Contenedor para los campos de nuevo artista -->
-                <div id="new-artist-fields">
-                    <div class="form-group">
-                        <label for="artist-profile-pic">Foto de Perfil (Circular)</label>
-                        <input type="file" id="artist-profile-pic" accept="image/*">
-                        <small>Necesaria solo para artistas nuevos.</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="artist-banner-pic">Imagen de Banner</label>
-                        <input type="file" id="artist-banner-pic" accept="image/*">
-                        <small>Necesaria solo para artistas nuevos.</small>
-                    </div>
-                </div>
-
-                <p class="form-section-title">Detalles del Lanzamiento</p>
-                <div class="form-group">
-                    <label for="release-title">Título del Lanzamiento</label>
+                    <label>Título del Álbum / Single</label>
                     <input type="text" id="release-title" placeholder="Ej: Clics Modernos" required>
                 </div>
                 <div class="form-group">
-                    <label for="release-genre">Género</label>
-                    <input type="text" id="release-genre" placeholder="Ej: New Wave" required>
+                    <label>Género</label>
+                    <input type="text" id="release-genre" placeholder="Ej: Rock, Trap, Indie..." required>
                 </div>
                 <div class="form-group">
-                    <label for="release-cover">Portada del Lanzamiento (1x1)</label>
+                    <label>Portada (Cuadrada)</label>
                     <input type="file" id="release-cover" accept="image/*" required>
                 </div>
 
-                <p class="form-section-title">Archivos de Audio</p>
-                <div id="drop-zone" class="drop-zone">
-                    <i class="fas fa-music"></i>
-                    <p>Arrastra tus archivos MP3 aquí</p>
-                    <input type="file" id="file-input" multiple accept=".mp3" hidden>
+                <!-- Paso 2: Audio -->
+                <div class="form-group">
+                    <label>Archivos de Audio</label>
+                    <div id="drop-zone" class="drop-zone">
+                        <i class="fas fa-music"></i>
+                        <p>Arrastra tus MP3 aquí o haz clic</p>
+                        <input type="file" id="file-input" multiple accept=".mp3" hidden>
+                    </div>
                 </div>
-                <div id="song-list-editor"></div>
-                <button type="submit" class="submit-btn">Publicar Lanzamiento</button>
+
+                <div id="song-list-editor" style="margin-bottom: 20px;">
+                    <!-- Aquí aparecen los inputs de canciones -->
+                </div>
+
+                <button type="submit" class="btn-primary" style="width:100%">Publicar Ahora</button>
             </form>
         </div>
     </div>
 
-    <!-- Scripts -->
+    <!-- MODAL EDITAR PERFIL -->
+    <div id="edit-profile-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Editar Perfil</h2>
+            <form id="edit-profile-form">
+                <div class="form-group">
+                    <label>Nombre Artista</label>
+                    <input type="text" id="edit-name-input" required>
+                </div>
+                <div class="form-group">
+                    <label>Foto de Perfil</label>
+                    <input type="file" id="edit-avatar-input" accept="image/*">
+                </div>
+                <div class="form-group">
+                    <label>Banner</label>
+                    <input type="file" id="edit-banner-input" accept="image/*">
+                </div>
+                <button type="submit" class="btn-primary" style="width:100%">Guardar Cambios</button>
+                <button type="button" id="close-edit-modal" class="btn-secondary" style="width:100%; margin-top:10px; border:none;">Cancelar</button>
+            </form>
+        </div>
+    </div>
+
     <script src="js/database.js"></script>
     <script src="js/profile.js"></script>
 </body>

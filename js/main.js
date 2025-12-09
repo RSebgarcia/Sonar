@@ -1,134 +1,227 @@
+// --- main.js ---
 document.addEventListener('DOMContentLoaded', () => {
-    // --- OBTENER DATOS DESDE localStorage ---
-    const { artistas, discos, canciones } = obtenerDatos();
+    // 1. CARGA DE DATOS (Incluyendo los semilla si es la primera vez)
+    const { artistas, discos, canciones, posts } = obtenerDatos();
 
-    // --- ELEMENTOS DEL DOM ---
-    
-    // Contenedores de Vistas
+    // ELEMENTOS UI
+    const songGrid = document.getElementById('song-grid');
     const mainView = document.getElementById('main-view');
     const artistView = document.getElementById('artist-view');
-
-    // Elementos de la Vista Principal
-    const songGrid = document.getElementById('song-grid');
+    const socialFeed = document.getElementById('social-feed');
     const searchInput = document.getElementById('searchInput');
 
-    // Elementos de la Vista de Artista
-    const artistBannerImg = document.getElementById('artist-banner-img');
-    const artistProfileImg = document.getElementById('artist-profile-img');
-    const artistViewName = document.getElementById('artist-view-name');
-    const artistSongsList = document.getElementById('artist-songs-list');
-    const backToMainBtn = document.getElementById('back-to-main-view');
-
-    // Elementos del Reproductor y "Now Playing"
-    const playerCover = document.getElementById('player-cover');
+    // ELEMENTOS REPRODUCTOR
+    const audioPlayer = document.getElementById('audio-player');
+    const playBtn = document.querySelector('.play-button');
+    const progressBar = document.getElementById('progress-bar');
+    const currTimeLabel = document.getElementById('current-time');
+    const totalTimeLabel = document.getElementById('total-duration');
     const playerTitle = document.getElementById('player-title');
     const playerArtist = document.getElementById('player-artist');
-    const nowPlayingView = document.getElementById('now-playing-view');
-    let currentSongData = {}; // Guarda datos de la canción en reproducción
+    const playerCover = document.getElementById('player-cover');
 
-    // --- FUNCIÓN PARA RENDERIZAR LA GRILLA PRINCIPAL ---
-    function renderMainGrid(cancionesAMostrar) {
+    let isPlaying = false;
+
+    // --- FUNCIONES RENDERIZADO ---
+    
+    // 1. GRID PRINCIPAL
+    function renderGrid(listaCanciones) {
         songGrid.innerHTML = '';
-        if (cancionesAMostrar.length === 0) {
-            songGrid.innerHTML = `<p style="color: var(--color-text-secondary);">Aún no hay música. ¡Ve al Panel de Carga para subir tu primer lanzamiento!</p>`;
+        if(listaCanciones.length === 0) {
+            songGrid.innerHTML = '<p>No hay canciones.</p>';
             return;
         }
-
-        cancionesAMostrar.forEach(cancion => {
+        
+        // Mostrar en orden inverso (nuevos primero)
+        [...listaCanciones].reverse().forEach(cancion => {
             const artista = artistas.find(a => a.id === cancion.artistaId);
             const disco = discos.find(d => d.id === cancion.discoId);
-            if (!artista || !disco) return;
-
+            
             const card = document.createElement('div');
             card.className = 'song-card';
             card.innerHTML = `
-                <img src="${disco.cover}" alt="${disco.titulo}">
+                <img src="${disco.cover}" loading="lazy">
                 <h4>${cancion.titulo}</h4>
-                <p class="artist-link" data-artist-id="${artista.id}">${artista.nombre}</p>
+                <p>${artista.nombre}</p>
             `;
-            
-            // Evento para cargar la canción en el reproductor (al hacer clic en la PORTADA)
-            card.querySelector('img').addEventListener('click', () => {
-                playerCover.src = disco.cover;
-                playerTitle.textContent = cancion.titulo;
-                playerArtist.textContent = artista.nombre;
-                currentSongData = { cover: disco.cover, title: cancion.titulo, artist: artista.nombre };
-            });
-            
+            card.addEventListener('click', () => playSong(cancion, artista, disco));
             songGrid.appendChild(card);
         });
     }
 
-    // --- FUNCIÓN PARA RENDERIZAR LA PÁGINA DE ARTISTA ---
-    function renderArtistPage(artistId) {
-        const artista = artistas.find(a => a.id === artistId);
-        if (!artista) return;
+    // 2. SIDEBAR SOCIAL (Estilo Twitter)
+    function renderSocialFeed() {
+        socialFeed.innerHTML = '';
+        if(!posts || posts.length === 0) return;
 
-        // Poblar la cabecera del artista
-        artistBannerImg.src = artista.bannerPic || 'https://via.placeholder.com/1200x300/181818/181818?text=Banner';
-        artistProfileImg.src = artista.profilePic || 'https://via.placeholder.com/150/FFFFFF/000000?text=P';
-        artistViewName.textContent = artista.nombre;
-
-        // Filtrar y mostrar la discografía del artista
-        const discosDelArtista = discos.filter(d => d.artistaId === artistId);
-        artistSongsList.innerHTML = discosDelArtista.map(disco => {
-             return `<div class="release-item">
-                        <img src="${disco.cover}" alt="${disco.titulo}">
-                        <div>
-                            <h4>${disco.titulo}</h4>
-                            <p>${disco.genero}</p>
-                        </div>
-                    </div>`;
-        }).join('');
-        
-        // Cambiar de vista
-        mainView.style.display = 'none';
-        artistView.style.display = 'block';
+        posts.forEach(post => {
+            const artista = artistas.find(a => a.id === post.artistaId);
+            const div = document.createElement('div');
+            div.className = 'social-post';
+            div.innerHTML = `
+                <div class="post-header">
+                    <img src="${artista.profilePic}" alt="pic">
+                    <strong>${artista.nombre}</strong>
+                    <span>@${artista.nombre.toLowerCase().replace(/\s/g,'')}</span>
+                </div>
+                <div class="post-content">
+                    ${post.texto}
+                </div>
+            `;
+            socialFeed.appendChild(div);
+        });
     }
-    
-    // --- MANEJO DE LA NAVEGACIÓN Y EVENTOS ---
 
-    // Usar delegación de eventos para los clics en los nombres de artista
-    document.body.addEventListener('click', (e) => {
-        if (e.target && e.target.classList.contains('artist-link')) {
-            const artistId = parseInt(e.target.dataset.artistId, 10);
-            renderArtistPage(artistId);
+    // --- LÓGICA REPRODUCTOR ---
+
+    async function playSong(cancion, artista, disco) {
+        // UI
+        playerTitle.textContent = cancion.titulo;
+        playerArtist.textContent = artista.nombre;
+        playerCover.src = disco.cover;
+        
+        // Reset Player
+        audioPlayer.pause();
+        playBtn.className = "fas fa-spinner fa-spin"; 
+
+        try {
+            // VERIFICAR ORIGEN DEL AUDIO
+            // Si tiene urlExterna (Datos Semilla) o si viene de IndexedDB
+            let src = '';
+            
+            if (cancion.urlExterna) {
+                src = cancion.urlExterna; // Usar URL remota para los datos falsos
+            } else {
+                // Intentar buscar en IndexedDB (Cargas del usuario)
+                const blob = await obtenerAudio(cancion.id);
+                if (blob) {
+                    src = URL.createObjectURL(blob);
+                } else {
+                    throw new Error("Audio no encontrado");
+                }
+            }
+
+            audioPlayer.src = src;
+            audioPlayer.play();
+            isPlaying = true;
+            playBtn.className = "fas fa-pause";
+
+        } catch (error) {
+            console.error(error);
+            alert("Error al reproducir. Revisa la consola.");
+            playBtn.className = "fas fa-play";
+        }
+    }
+
+    // Control Play/Pause
+    document.querySelector('.play-circle-bg').addEventListener('click', () => {
+        if(!audioPlayer.src) return;
+        if(isPlaying) {
+            audioPlayer.pause();
+            playBtn.className = "fas fa-play";
+            isPlaying = false;
+        } else {
+            audioPlayer.play();
+            playBtn.className = "fas fa-pause";
+            isPlaying = true;
         }
     });
 
-    // Evento para el botón de "Volver"
-    backToMainBtn.addEventListener('click', () => {
+    // Barra de Progreso
+    audioPlayer.addEventListener('timeupdate', (e) => {
+        const { duration, currentTime } = e.srcElement;
+        if (duration) {
+            const progressPercent = (currentTime / duration) * 100;
+            progressBar.value = progressPercent;
+            
+            // Tiempos formateados
+            currTimeLabel.textContent = formatTime(currentTime);
+            totalTimeLabel.textContent = formatTime(duration);
+        }
+    });
+
+    // Click en la barra de progreso
+    progressBar.addEventListener('input', () => {
+        const duration = audioPlayer.duration;
+        audioPlayer.currentTime = (progressBar.value * duration) / 100;
+    });
+
+    function formatTime(seconds) {
+        const min = Math.floor(seconds / 60);
+        const sec = Math.floor(seconds % 60);
+        return `${min}:${sec < 10 ? '0' + sec : sec}`;
+    }
+
+    // --- VISTAS Y NAVEGACIÓN ---
+    // (Simplificado para el demo)
+    document.getElementById('back-to-main-view').addEventListener('click', () => {
         artistView.style.display = 'none';
         mainView.style.display = 'block';
     });
 
-    // Lógica para abrir/cerrar "Now Playing" (sin cambios)
-    playerCover.addEventListener('click', () => {
-        if (currentSongData.cover) {
-            document.getElementById('now-playing-cover').src = currentSongData.cover;
-            document.getElementById('now-playing-title').textContent = currentSongData.title;
-            document.getElementById('now-playing-artist').textContent = currentSongData.artist;
-            nowPlayingView.classList.add('visible');
-        }
-    });
-    document.getElementById('close-now-playing').addEventListener('click', () => {
-        nowPlayingView.classList.remove('visible');
-    });
-
-    // Lógica de Búsqueda (sin cambios)
+    // Búsqueda
     searchInput.addEventListener('keyup', (e) => {
-        const termino = e.target.value.toLowerCase();
-        if (termino.length < 2) { renderMainGrid(canciones); return; }
-        const resultados = canciones.filter(c => {
-            const artista = artistas.find(a => a.id === c.artistaId);
-            const disco = discos.find(d => d.id === c.discoId);
-            return c.titulo.toLowerCase().includes(termino) ||
-                   artista.nombre.toLowerCase().includes(termino) ||
-                   disco.titulo.toLowerCase().includes(termino);
-        });
-        renderMainGrid(resultados);
+        const term = e.target.value.toLowerCase();
+        const filtered = canciones.filter(c => c.titulo.toLowerCase().includes(term));
+        renderGrid(filtered);
     });
 
-    // --- INICIALIZACIÓN ---
-    renderMainGrid(canciones);
+    // --- AGREGAR ESTO DENTRO DEL DOMContentLoaded de main.js ---
+
+    // LÓGICA SOCIAL (PUBLICAR)
+
+    // LÓGICA SOCIAL (PUBLICAR)
+    const btnPublicar = document.getElementById('btn-publicar');
+    const inputPost = document.getElementById('post-input');
+
+    // Función auxiliar para repintar el feed
+    function actualizarFeedVisualmente() {
+        const { posts, artistas } = obtenerDatos(); // Obtenemos datos FRESCOS
+        const socialFeed = document.getElementById('social-feed');
+        
+        if (socialFeed) {
+            socialFeed.innerHTML = posts.map(post => {
+                const artista = artistas.find(a => a.id === post.artistaId) || { nombre: 'Usuario', profilePic: 'https://via.placeholder.com/150' };
+                return `
+                    <div class="social-post animate-fade-in"> <!-- Agregamos clase para animación -->
+                        <div class="post-header">
+                            <img src="${artista.profilePic}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;margin-right:10px;">
+                            <strong>${artista.nombre}</strong>
+                            <span style="font-size:11px; color:#666; margin-left:5px;">Hace un instante</span>
+                        </div>
+                        <div style="margin-left:40px;font-size:13px;color:#ddd;margin-top:5px;">${post.texto}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    if (btnPublicar && inputPost) {
+        btnPublicar.addEventListener('click', () => {
+            const texto = inputPost.value.trim();
+            if (!texto) return;
+
+            // 1. Guardar en DB
+            publicarPost(texto);
+            
+            // 2. Limpiar input
+            inputPost.value = ''; 
+
+            // 3. ACTUALIZAR VISUALMENTE AL INSTANTE
+            actualizarFeedVisualmente();
+        });
+    }
+
+// Asegúrate de llamar a esta función al cargar la página también, en lugar de renderSocialFeed() viejo.
+    actualizarFeedVisualmente();
+
+
+    // --- INICIALIZAR ---
+    renderGrid(canciones);
+    renderSocialFeed();
+
+
+
+
+
 });
